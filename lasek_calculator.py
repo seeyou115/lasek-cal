@@ -236,9 +236,62 @@ if st.button("🔍 절삭 수치 계산", type="primary", use_container_width=Tr
     
     st.info(f"📋 적용 규칙: {reason}")
     
-    # CYL은 그대로
+    # CYL 조정 로직 추가
     st.markdown("---")
-    st.markdown(f"**CYL (난시 도수)**: {cyl_input:.2f} → **{cyl_input:.2f}** (변경 없음)")
+    
+    # 초기값: CYL 그대로
+    adjusted_cyl = cyl_input
+    cyl_adjustment = 0.0
+    cyl_reason = "조정 없음"
+    
+    # CYL 값에 따른 조정 (절차적으로 단계별 확인)
+    if cyl_input >= -1.75:
+        # -1.75 이하(즉, 0에 가까운 값)면 그대로
+        cyl_reason = "CYL이 -1.75 이하 (그대로)"
+    
+    elif -2.75 <= cyl_input <= -2.00:
+        # -2.00 ~ -2.75 범위
+        cyl_adjustment = 0.25
+        adjusted_cyl = cyl_input + 0.25
+        cyl_reason = "CYL이 -2.00~-2.75 범위 (+0.25)"
+    
+    elif -3.75 <= cyl_input <= -3.00:
+        # -3.00 ~ -3.75 범위
+        cyl_adjustment = 0.50
+        adjusted_cyl = cyl_input + 0.50
+        cyl_reason = "CYL이 -3.00~-3.75 범위 (+0.50)"
+    
+    elif -4.75 <= cyl_input <= -4.00:
+        # -4.00 ~ -4.75 범위
+        cyl_adjustment = 0.75
+        adjusted_cyl = cyl_input + 0.75
+        cyl_reason = "CYL이 -4.00~-4.75 범위 (+0.75)"
+    
+    elif cyl_input == -5.00 or cyl_input == -5.25:
+        # -5.00, -5.25
+        cyl_adjustment = 1.00
+        adjusted_cyl = cyl_input + 1.00
+        cyl_reason = "CYL이 -5.00 또는 -5.25 (+1.00)"
+    
+    elif cyl_input <= -5.50:
+        # -5.50 이상 (더 큰 음수)
+        cyl_adjustment = 1.25
+        adjusted_cyl = cyl_input + 1.25
+        cyl_reason = "CYL이 -5.50 이상 (+1.25)"
+    
+    # CYL 결과 출력
+    cyl_result_col1, cyl_result_col2, cyl_result_col3 = st.columns(3)
+    
+    with cyl_result_col1:
+        st.metric(label="입력 CYL", value=f"{cyl_input:.2f}")
+    
+    with cyl_result_col2:
+        st.metric(label="조정값", value=f"{cyl_adjustment:+.2f}" if cyl_adjustment != 0 else "0.00")
+    
+    with cyl_result_col3:
+        st.metric(label="절삭 CYL", value=f"{adjusted_cyl:.2f}", delta=f"{cyl_adjustment:+.2f}" if cyl_adjustment != 0 else None)
+    
+    st.info(f"📋 적용 규칙: {cyl_reason}")
 
 # 하단 안내
 st.markdown("---")
