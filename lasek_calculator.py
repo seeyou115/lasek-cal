@@ -14,7 +14,7 @@ st.markdown("""
 """)
 
 # 입력 섹션
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     sph_input = st.number_input(
@@ -34,6 +34,16 @@ with col2:
         value=0.0, 
         step=0.25,
         format="%.2f"
+    )
+
+with col3:
+    corneal_thickness = st.number_input(
+        "각막 두께 (μm)", 
+        min_value=300, 
+        max_value=700, 
+        value=550, 
+        step=1,
+        help="환자의 각막 두께를 입력하세요 (정상 범위: 500-600μm)"
     )
 
 st.markdown("---")
@@ -370,13 +380,87 @@ if st.button("🔍 절삭 수치 계산", type="primary", use_container_width=Tr
                 help="WFO Ablation Depth Table 기준"
             )
         
-        # 안전성 평가
-        if ablation_depth < 80:
-            st.success(f"✅ 절삭량이 {ablation_depth}μm으로 안전 범위 내입니다.")
-        elif ablation_depth < 120:
-            st.warning(f"⚠️ 절삭량이 {ablation_depth}μm입니다. 각막 두께를 확인하세요.")
+        # 잔여각막 두께 계산
+        st.markdown("---")
+        st.markdown("### 🔬 잔여 각막 두께 분석")
+        
+        # LASEK의 경우 상피 제거 후 절삭 (상피 약 50μm)
+        # 최종 잔여각막 = 각막두께 - 절삭량
+        residual_thickness = corneal_thickness - ablation_depth
+        
+        # 결과 표시
+        residual_col1, residual_col2, residual_col3 = st.columns(3)
+        
+        with residual_col1:
+            st.metric(
+                label="수술 전 각막두께",
+                value=f"{corneal_thickness} μm"
+            )
+        
+        with residual_col2:
+            st.metric(
+                label="절삭량",
+                value=f"{ablation_depth} μm",
+                delta=f"-{ablation_depth} μm",
+                delta_color="inverse"
+            )
+        
+        with residual_col3:
+            st.metric(
+                label="잔여 각막두께",
+                value=f"{residual_thickness} μm",
+                help="절삭 후 남은 각막 두께"
+            )
+        
+        # 안전성 종합 평가
+        st.markdown("---")
+        st.markdown("### 📋 안전성 종합 평가")
+        
+        # 평가 기준
+        is_safe = True
+        warnings = []
+        
+        # 1. 절삭량 평가
+        if ablation_depth >= 120:
+            is_safe = False
+            warnings.append(f"⚠️ 절삭량이 {ablation_depth}μm으로 매우 높습니다")
+        elif ablation_depth >= 80:
+            warnings.append(f"⚠️ 절삭량이 {ablation_depth}μm입니다")
+        
+        # 2. 잔여각막 평가 (LASEK 기준: 최소 400μm 권장, 안전: 450μm 이상)
+        if residual_thickness < 400:
+            is_safe = False
+            warnings.append(f"🚨 잔여각막이 {residual_thickness}μm으로 위험합니다 (최소 400μm 필요)")
+        elif residual_thickness < 450:
+            warnings.append(f"⚠️ 잔여각막이 {residual_thickness}μm으로 주의가 필요합니다 (안전: 450μm 이상)")
+        
+        # 3. 각막두께 자체 평가
+        if corneal_thickness < 480:
+            warnings.append(f"⚠️ 수술 전 각막두께가 {corneal_thickness}μm으로 얇습니다 (정상: 500-600μm)")
+        
+        # 결과 표시
+        if is_safe and len(warnings) == 0:
+            st.success(f"""
+            ✅ **수술 가능 - 안전 범위**
+            - 잔여각막: {residual_thickness}μm (안전)
+            - 절삭량: {ablation_depth}μm (적정)
+            - 수술 전 각막두께: {corneal_thickness}μm (정상)
+            """)
+        elif not is_safe:
+            st.error(f"""
+            🚨 **수술 고위험 - 신중한 검토 필요**
+            """)
+            for warning in warnings:
+                st.error(warning)
+            st.error("**💡 권장사항**: 추가 검사 필요 또는 다른 수술 방법 고려")
         else:
-            st.error(f"🚨 절삭량이 {ablation_depth}μm으로 높습니다. 신중한 검토가 필요합니다.")
+            st.warning(f"""
+            ⚠️ **수술 가능 - 주의 필요**
+            """)
+            for warning in warnings:
+                st.warning(warning)
+            st.info("**💡 권장사항**: 각막지형도 등 추가 검사 권장")
+        
     else:
         st.warning("⚠️ 입력값이 절삭량 표의 범위를 벗어났습니다.")
 
